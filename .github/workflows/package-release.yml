@@ -1,0 +1,142 @@
+name: "[Dev] Create Release"
+
+# This workflow is for maintainers/developers only
+# It packages the module and creates a GitHub release
+
+run-name: "Release: v${{ inputs.version }} (${{ inputs.release_type }})"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.8)'
+        required: true
+        type: string
+      title:
+        description: 'Release title (e.g., v1.0.8)'
+        required: true
+        type: string
+      body:
+        description: 'Release notes (supports Markdown: **bold**, - lists, etc.)'
+        required: true
+        type: string
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - 'release'
+          - 'pre-release'
+          - 'draft'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    name: Create Release
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Version must be in format X.Y.Z (e.g., 1.0.8)"
+            exit 1
+          fi
+
+          echo "Version: $VERSION"
+
+      - name: Create module ZIP
+        id: create_zip
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          ZIP_NAME="mipad-custom-boot-$VERSION.zip"
+
+          cd module
+
+          # Create ZIP with stored (no compression) mode for bootanimation compatibility
+          echo "Creating ZIP with stored (no compression) mode..."
+          zip -r -0 "../$ZIP_NAME" . -x "*.git*"
+
+          cd ..
+
+          # Get zip size
+          ZIP_SIZE=$(du -h "$ZIP_NAME" | cut -f1)
+
+          echo "zip_name=$ZIP_NAME" >> $GITHUB_OUTPUT
+          echo "zip_size=$ZIP_SIZE" >> $GITHUB_OUTPUT
+
+          echo ""
+          echo "Created: $ZIP_NAME ($ZIP_SIZE)"
+          echo ""
+          echo "ZIP contents:"
+          unzip -l "$ZIP_NAME"
+
+      - name: Create GitHub Release
+        id: create_release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          TAG="v$VERSION"
+          TITLE="${{ github.event.inputs.title }}"
+          BODY="${{ github.event.inputs.body }}"
+          RELEASE_TYPE="${{ github.event.inputs.release_type }}"
+          ZIP_NAME="${{ steps.create_zip.outputs.zip_name }}"
+
+          # Build release flags
+          FLAGS=""
+          if [ "$RELEASE_TYPE" = "pre-release" ]; then
+            FLAGS="--prerelease"
+          elif [ "$RELEASE_TYPE" = "draft" ]; then
+            FLAGS="--draft"
+          fi
+
+          echo "Creating release..."
+          echo "  Tag: $TAG"
+          echo "  Title: $TITLE"
+          echo "  Type: $RELEASE_TYPE"
+
+          # Create the release with the ZIP attached
+          gh release create "$TAG" "$ZIP_NAME" \
+            --title "$TITLE" \
+            --notes "$BODY" \
+            $FLAGS
+
+          echo "Release created successfully!"
+          echo "release_url=https://github.com/${{ github.repository }}/releases/tag/$TAG" >> $GITHUB_OUTPUT
+
+      - name: Generate build summary
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          RELEASE_TYPE="${{ github.event.inputs.release_type }}"
+
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+          # Release Created Successfully
+
+          ## Release Details
+
+          | Property | Value |
+          |----------|-------|
+          | **Tag** | v$VERSION |
+          | **Title** | ${{ github.event.inputs.title }} |
+          | **Type** | $RELEASE_TYPE |
+          | **File** | \`${{ steps.create_zip.outputs.zip_name }}\` |
+          | **Size** | ${{ steps.create_zip.outputs.zip_size }} |
+
+          ## Links
+
+          - [View Release](${{ steps.create_release.outputs.release_url }})
+
+          ## Next Steps
+
+          Update \`update.json\` with the new version info.
+          EOF
