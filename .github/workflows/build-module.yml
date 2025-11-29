@@ -5,7 +5,7 @@ name: Build Custom Boot Animation Module
 # 3. Run this workflow manually
 # 4. Download the ready-to-flash module
 
-run-name: "Build: ${{ inputs.source == 'template' && format('{0}/{1}', inputs.device, inputs.theme) || 'upload' }} → ${{ inputs.target_location }}"
+run-name: "Build: ${{ inputs.source == 'template' && format('{0}/{1}', inputs.device, inputs.theme) || 'upload' }} > ${{ inputs.target_location }}"
 
 on:
   workflow_dispatch:
