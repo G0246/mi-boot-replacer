@@ -116,19 +116,18 @@ bootanimation.zip
 #### desc.txt Format
 
 ```
-<width> <height> <fps>
+<height> <width> <fps>
 <type> <count> <pause> <path>
 ...
 ```
 
 Example:
 ```
-1080 1920 60
-c 1 0 part0
-c 0 0 part1
+1880 2880 60
+p 0 5 part0
 ```
 
-- `c` = Play complete (or `p` = play and repeat)
+- `c` = play complete, `p` = play and repeat
 - First number = loop count (0 = infinite)
 - Second number = pause after loop (in frames)
 - Path = folder containing the frames
