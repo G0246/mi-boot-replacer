@@ -2,6 +2,11 @@ name: "NodeJs with Release"
 
 # This workflow is for maintainers/developers only
 # It packages the module, creates a GitHub release, and updates update.json
+#
+# Before running:
+# 1. Update module/module.prop with the new version
+# 2. Edit RELEASE_NOTES.md with your changelog
+# 3. Run this workflow
 
 run-name: "Release: v${{ inputs.version }} (${{ inputs.release_type }})"
 
@@ -14,10 +19,6 @@ on:
         type: string
       title:
         description: 'Release title (e.g., v1.0.8)'
-        required: true
-        type: string
-      body:
-        description: 'Release notes (supports Markdown: **bold**, - lists, etc.)'
         required: true
         type: string
       release_type:
@@ -84,7 +85,6 @@ jobs:
         id: create_release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_BODY: ${{ github.event.inputs.body }}
         run: |
           VERSION="${{ github.event.inputs.version }}"
           TAG="v$VERSION"
@@ -92,11 +92,18 @@ jobs:
           RELEASE_TYPE="${{ github.event.inputs.release_type }}"
           ZIP_NAME="${{ steps.create_zip.outputs.zip_name }}"
 
+          # Check if RELEASE_NOTES.md exists
+          if [ ! -f "RELEASE_NOTES.md" ]; then
+            echo "Error: RELEASE_NOTES.md not found!"
+            echo "Please create RELEASE_NOTES.md with your release notes before running this workflow."
+            exit 1
+          fi
+
           # Get the previous release tag for changelog link
           PREV_TAG=$(gh release list --repo ${{ github.repository }} --exclude-drafts --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null || echo "")
 
-          # Build full release notes with changelog link using a temp file
-          echo "$RELEASE_BODY" > release_notes.md
+          # Copy release notes and append changelog link
+          cp RELEASE_NOTES.md release_notes.md
 
           if [ -n "$PREV_TAG" ]; then
             CHANGELOG_URL="https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${TAG}"
