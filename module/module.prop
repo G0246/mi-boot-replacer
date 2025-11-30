@@ -1,7 +1,7 @@
 id=mi-boot-replacer
 name=Xiaomi Boot Animation Replacer
-version=v1.1.2
-versionCode=112
+version=v1.1.7
+versionCode=117
 author=Veutexus
 description=A module that can custom boot animation for Xiaomi devices. (GitHub: https://github.com/G0246)
 updateJson=https://raw.githubusercontent.com/G0246/mi-boot-replacer/main/update.json

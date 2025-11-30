@@ -3,12 +3,14 @@ SKIPUNZIP=0
 # Detect API and architecture
 api_level_arch_detect
 
-# Default boot animation location (will be set by user prompt)
+# Default boot animation location
 BOOT_DIR="/product/media"
 BOOT_DIR_FROM_MODULE=false
 BACKUP_DIR="/data/adb/boot-backups"
 MODULE_ID=$(grep_prop id "$MODPATH/module.prop")
+MODULE_NAME=$(grep_prop name "$MODPATH/module.prop")
 MODULE_VER_CODE=$(($(grep_prop versionCode "$MODPATH/module.prop") + 0))
+OLD_MODULE_DIR="/data/adb/modules/$MODULE_ID"
 
 # Recovery not recommended
 if [[ "$BOOTMODE" != true ]]; then
@@ -18,13 +20,7 @@ if [[ "$BOOTMODE" != true ]]; then
   abort "*********************************************"
 fi
 
-# Check Android version
-if [ "$API" -lt 30 ]; then
-  ui_print "*********************************************"
-  ui_print "! Android 11+ (API: 30+) required!"
-  abort "*********************************************"
-fi
-
+# User prompt
 key_check() {
   local timeout=60
   local start_time=$(date +%s)
@@ -57,8 +53,6 @@ key_check() {
 
 # Auto-detect boot animation location from module structure
 detect_boot_dir() {
-  # First, check if bootanimation files exist in the module's system folder
-  # This detects the path chosen during GitHub Actions build
   local module_boot_dir=""
 
   # Search for bootanimation.zip in module's system directory
@@ -91,13 +85,13 @@ detect_boot_dir() {
 
 # Let user select boot animation location
 select_boot_dir() {
-  ui_print "*********************************************"
   ui_print "- Select boot animation location:"
+  ui_print "- Press the following keys to proceed:"
   ui_print "  Volume [+]: Next option"
   ui_print "  Volume [-]: Confirm selection"
   ui_print "*********************************************"
 
-  # Available locations (3 options)
+  # Available locations
   local current_index=0
   local total=3
 
@@ -111,9 +105,9 @@ select_boot_dir() {
   while true; do
     ui_print ""
     case $current_index in
-      0) ui_print "  >> Product Media (Default)"; ui_print "     Path: /product/media" ;;
-      1) ui_print "  >> System Media (Legacy)"; ui_print "     Path: /system/media" ;;
-      2) ui_print "  >> System Ext Media"; ui_print "     Path: /system_ext/media" ;;
+      0) ui_print "- [1/3] Product Media (Default)"; ui_print "  Path: /product/media" ;;
+      1) ui_print "- [2/3] System Media (Legacy)"; ui_print "  Path: /system/media" ;;
+      2) ui_print "- [3/3] System Ext Media"; ui_print "  Path: /system_ext/media" ;;
     esac
 
     key_check
@@ -135,6 +129,7 @@ select_boot_dir() {
   done
 }
 
+# Backup
 backup() {
   ui_print "- Backing up boot animations from $BOOT_DIR"
   if [ -d "$BOOT_DIR" ]; then
@@ -150,7 +145,7 @@ backup() {
 }
 
 ui_print "*********************************************"
-ui_print "- MiPad Custom Boot Animation"
+ui_print "- $MODULE_NAME"
 ui_print "- By Veutexus (github.com/G0246)"
 ui_print "- ID: $MODULE_ID"
 ui_print "- Version: $MODULE_VER_CODE"
@@ -161,7 +156,6 @@ if [[ "$KSU" == "true" ]]; then
   ui_print "- KernelSU Userspace Version: $KSU_VER_CODE"
   ui_print "- KernelSU Kernel Space Version: $KSU_KERNEL_VER_CODE"
   if [ "$KSU_VER_CODE" -lt 11551 ]; then
-    ui_print "*********************************************"
     ui_print "! KernelSU v0.8.0+ required!"
     abort "*********************************************"
   fi
@@ -170,14 +164,12 @@ elif [[ "$APATCH" == "true" ]]; then
   ui_print "- KernelPatch Version: $KERNELPATCH_VERSION"
   ui_print "- KernelPatch Kernel Version: $KERNEL_VERSION"
   if [ "$APATCH_VER_CODE" -lt 10568 ]; then
-    ui_print "*********************************************"
     ui_print "! APatch 10568+ required!"
     abort "*********************************************"
   fi
 else
   ui_print "- Magisk Version: $MAGISK_VER ($MAGISK_VER_CODE)"
   if [ "$MAGISK_VER_CODE" -lt 26100 ]; then
-    ui_print "*********************************************"
     ui_print "- Your current version of Magisk does not meet the minimum requirements"
     ui_print "  Would you like to proceed with the installation anyway?"
     ui_print "  Press the following keys to proceed:"
@@ -203,7 +195,56 @@ ui_print "  Model: $(getprop ro.product.model)"
 ui_print "  Android: $(getprop ro.build.version.release)"
 ui_print "*********************************************"
 
-# Auto-detect and let user confirm/change boot animation location
+# Check Android version
+if [ "$API" -lt 30 ]; then
+  ui_print "! Android 11+ (API: 30+) required!"
+  abort "*********************************************"
+fi
+
+# Check if device is Xiaomi
+DEVICE_BRAND=$(getprop ro.product.brand | tr '[:upper:]' '[:lower:]')
+if [[ "$DEVICE_BRAND" != "xiaomi" && "$DEVICE_BRAND" != "redmi" && "$DEVICE_BRAND" != "poco" ]]; then
+  ui_print "! Warning: Non-Xiaomi device detected"
+  ui_print "- This module is designed for Xiaomi/Redmi/POCO devices"
+  ui_print "- Theoretically it should still work, but unexpected behavior may occur on other devices"
+  ui_print "- If you think this is a mistake, please make sure you do not have any device spoofing related module enabled"
+  ui_print "- Do you want to proceed with installation?"
+  ui_print "  Volume [+]: Continue (At your own risk)"
+  ui_print "  Volume [-]: Abort installation"
+  ui_print "*********************************************"
+  key_check
+  if [[ "$keycheck" == "KEY_VOLUMEUP" ]]; then
+    ui_print "- Proceeding with installation on non-Xiaomi device"
+  else
+    ui_print "- Installation aborted"
+    abort "*********************************************"
+  fi
+fi
+
+# Check for existing module installation and preserve user's theme
+if [ -d "$OLD_MODULE_DIR/system" ]; then
+  ui_print "- Existing module installation detected"
+  ui_print "- Do you want to keep your current theme?"
+  ui_print "  Volume [+]: Replace with new theme"
+  ui_print "  Volume [-]: Keep current theme (Default)"
+  ui_print "*********************************************"
+  key_check
+  if [[ "$keycheck" == "KEY_VOLUMEUP" ]]; then
+    ui_print "- Replacing with new theme"
+  else
+    ui_print "- Preserving your current theme..."
+    # Remove the new module's system directory and copy the old one
+    rm -rf "$MODPATH/system"
+    cp -rf "$OLD_MODULE_DIR/system" "$MODPATH/system"
+    if [ $? -eq 0 ]; then
+      ui_print "- Current theme preserved successfully"
+    else
+      ui_print "! Failed to preserve theme, using new theme instead"
+    fi
+  fi
+fi
+
+# Auto-detect location
 detect_boot_dir
 
 if [ "$BOOT_DIR_FROM_MODULE" = true ]; then
@@ -241,7 +282,7 @@ fi
 if [ "$backup_exists" = false ]; then
   ui_print "- Do you want to backup your current boot animation?"
   ui_print "  Press the following keys to proceed:"
-  ui_print "  Volume [+]: Backup (RECOMMENDED)"
+  ui_print "  Volume [+]: Backup (Recommended)"
   ui_print "  Volume [-]: Skip"
   ui_print "*********************************************"
   key_check
@@ -262,4 +303,10 @@ fi
 ui_print "*********************************************"
 ui_print "- Installation completed!"
 ui_print "- Reboot to see new animations"
+ui_print ""
+ui_print "! If you don't see any changes after reboot:"
+ui_print "  You may have selected the wrong path"
+ui_print "  Try reinstalling and select a different location"
 ui_print "*********************************************"
+
+# End

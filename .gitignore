@@ -1,5 +1,14 @@
+# Temporary files
 *.tmp
 *.log
-*.so
-test*
-b.sh
+*.bak
+*.swp
+*~
+
+# Personal upload folder content
+upload/*
+!upload/.gitkeep
+
+# Local development
+.env
+.env.local
