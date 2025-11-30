@@ -11,18 +11,14 @@ MODULE_ID=$(grep_prop id "$MODPATH/module.prop")
 MODULE_NAME=$(grep_prop name "$MODPATH/module.prop")
 MODULE_VER_CODE=$(($(grep_prop versionCode "$MODPATH/module.prop") + 0))
 
+# Check for existing module installation and preserve user's theme
+OLD_MODULE_DIR="/data/adb/modules/$MODULE_ID"
+
 # Recovery not recommended
 if [[ "$BOOTMODE" != true ]]; then
   ui_print "*********************************************"
   ui_print "! Installing from recovery is not supported!"
   ui_print "! Please install via Magisk / KernelSU / APatch app"
-  abort "*********************************************"
-fi
-
-# Check Android version
-if [ "$API" -lt 30 ]; then
-  ui_print "*********************************************"
-  ui_print "! Android 11+ (API: 30+) required!"
   abort "*********************************************"
 fi
 
@@ -90,7 +86,6 @@ detect_boot_dir() {
 
 # Let user select boot animation location
 select_boot_dir() {
-  ui_print "*********************************************"
   ui_print "- Select boot animation location:"
   ui_print "- Press the following keys to proceed:"
   ui_print "  Volume [+]: Next option"
@@ -161,7 +156,6 @@ if [[ "$KSU" == "true" ]]; then
   ui_print "- KernelSU Userspace Version: $KSU_VER_CODE"
   ui_print "- KernelSU Kernel Space Version: $KSU_KERNEL_VER_CODE"
   if [ "$KSU_VER_CODE" -lt 11551 ]; then
-    ui_print "*********************************************"
     ui_print "! KernelSU v0.8.0+ required!"
     abort "*********************************************"
   fi
@@ -170,14 +164,12 @@ elif [[ "$APATCH" == "true" ]]; then
   ui_print "- KernelPatch Version: $KERNELPATCH_VERSION"
   ui_print "- KernelPatch Kernel Version: $KERNEL_VERSION"
   if [ "$APATCH_VER_CODE" -lt 10568 ]; then
-    ui_print "*********************************************"
     ui_print "! APatch 10568+ required!"
     abort "*********************************************"
   fi
 else
   ui_print "- Magisk Version: $MAGISK_VER ($MAGISK_VER_CODE)"
   if [ "$MAGISK_VER_CODE" -lt 26100 ]; then
-    ui_print "*********************************************"
     ui_print "- Your current version of Magisk does not meet the minimum requirements"
     ui_print "  Would you like to proceed with the installation anyway?"
     ui_print "  Press the following keys to proceed:"
@@ -203,10 +195,33 @@ ui_print "  Model: $(getprop ro.product.model)"
 ui_print "  Android: $(getprop ro.build.version.release)"
 ui_print "*********************************************"
 
-# Check for existing module installation and preserve user's theme
-OLD_MODULE_DIR="/data/adb/modules/$MODULE_ID"
-if [ -d "$OLD_MODULE_DIR/system" ]; then
+# Check Android version
+if [ "$API" -lt 30 ]; then
+  ui_print "! Android 11+ (API: 30+) required!"
+  abort "*********************************************"
+fi
+
+# Check if device is Xiaomi
+DEVICE_BRAND=$(getprop ro.product.brand | tr '[:upper:]' '[:lower:]')
+if [[ "$DEVICE_BRAND" != "xiaomi" && "$DEVICE_BRAND" != "redmi" && "$DEVICE_BRAND" != "poco" ]]; then
+  ui_print "! Warning: Non-Xiaomi device detected"
+  ui_print "- This module is designed for Xiaomi/Redmi/POCO devices"
+  ui_print "- Theoretically it should still work, but unexpected behavior may occur on other devices"
+  ui_print "- If you think this is a mistake, please make sure you do not have any device spoofing related module enabled"
+  ui_print "- Do you want to proceed with installation?"
+  ui_print "  Volume [+]: Continue (At your own risk)"
+  ui_print "  Volume [-]: Abort installation"
   ui_print "*********************************************"
+  key_check
+  if [[ "$keycheck" == "KEY_VOLUMEUP" ]]; then
+    ui_print "- Proceeding with installation on non-Xiaomi device"
+  else
+    ui_print "- Installation aborted"
+    abort "*********************************************"
+  fi
+fi
+
+if [ -d "$OLD_MODULE_DIR/system" ]; then
   ui_print "- Existing module installation detected"
   ui_print "- Do you want to keep your current theme?"
   ui_print "  Volume [+]: Replace with new theme"
