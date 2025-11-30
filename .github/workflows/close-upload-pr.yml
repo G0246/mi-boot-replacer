@@ -15,19 +15,29 @@ jobs:
       pull-requests: write
 
     steps:
-      - name: Close PR
+      - name: Check and Close PR
         uses: actions/github-script@v7
         with:
           script: |
             const prNumber = context.payload.pull_request.number;
             const prAuthor = context.payload.pull_request.user.login;
+            const repoOwner = context.repo.owner;
+            const isOwner = prAuthor.toLowerCase() === repoOwner.toLowerCase();
 
-            // Add comment explaining why
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-              body: `Hi @${prAuthor},
+            if (isOwner) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `⚠️ This PR modifies the \`upload/\` folder.`
+              });
+              console.log(`Warning added to PR #${prNumber}`);
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `Hi @${prAuthor},
 
             This PR has been automatically closed because it modifies the \`upload/\` folder.
 
@@ -42,14 +52,13 @@ jobs:
             If you have a different contribution (bug fix, new template, etc.), please open a new PR without changes to the \`upload/\` folder.
 
             Thank you for your understanding!`
-            });
+              });
 
-            // Close the PR
-            await github.rest.pulls.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: prNumber,
-              state: 'closed'
-            });
-
-            console.log(`Closed PR #${prNumber} - modifies upload folder`);
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                state: 'closed'
+              });
+              console.log(`Closed PR #${prNumber}`);
+            }
