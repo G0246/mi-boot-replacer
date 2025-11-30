@@ -2,6 +2,7 @@ name: Auto Close Upload PRs
 
 # Automatically close PRs that modify the upload folder
 # The upload folder is for personal use only after forking
+# Only applies to PRs from forks, not internal PRs
 
 on:
   pull_request_target:
@@ -11,31 +12,18 @@ on:
 jobs:
   close-pr:
     runs-on: ubuntu-latest
+    # Only run for PRs from forks
+    if: github.event.pull_request.head.repo.full_name != github.repository
     permissions:
       pull-requests: write
 
     steps:
-      - name: Check and Close PR
+      - name: Close PR
         uses: actions/github-script@v7
         with:
           script: |
             const prNumber = context.payload.pull_request.number;
             const prAuthor = context.payload.pull_request.user.login;
-            const repoOwner = context.repo.owner;
-            const isOwner = prAuthor.toLowerCase() === repoOwner.toLowerCase();
-
-            console.log(`PR Author: ${prAuthor}, Repo Owner: ${repoOwner}, Is Owner: ${isOwner}`);
-
-            if (isOwner) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: prNumber,
-                body: `⚠️ This PR modifies the \`upload/\` folder.`
-              });
-              console.log(`Warning added to PR #${prNumber}`);
-              return;
-            }
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -63,5 +51,7 @@ jobs:
               repo: context.repo.repo,
               pull_number: prNumber,
               state: 'closed'
+            });
+            console.log(`Closed PR #${prNumber}`);
             });
             console.log(`Closed PR #${prNumber}`);
