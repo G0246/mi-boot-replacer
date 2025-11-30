@@ -3,7 +3,7 @@ SKIPUNZIP=0
 # Detect API and architecture
 api_level_arch_detect
 
-# Default boot animation location (will be set by user prompt)
+# Default boot animation location
 BOOT_DIR="/product/media"
 BOOT_DIR_FROM_MODULE=false
 BACKUP_DIR="/data/adb/boot-backups"
@@ -58,8 +58,6 @@ key_check() {
 
 # Auto-detect boot animation location from module structure
 detect_boot_dir() {
-  # First, check if bootanimation files exist in the module's system folder
-  # This detects the path chosen during GitHub Actions build
   local module_boot_dir=""
 
   # Search for bootanimation.zip in module's system directory
@@ -99,7 +97,7 @@ select_boot_dir() {
   ui_print "  Volume [-]: Confirm selection"
   ui_print "*********************************************"
 
-  # Available locations (3 options)
+  # Available locations
   local current_index=0
   local total=3
 
@@ -230,7 +228,7 @@ if [ -d "$OLD_MODULE_DIR/system" ]; then
   fi
 fi
 
-# Auto-detect and let user confirm/change boot animation location
+# Auto-detect location
 detect_boot_dir
 
 if [ "$BOOT_DIR_FROM_MODULE" = true ]; then
@@ -294,3 +292,5 @@ ui_print "! If you don't see any changes after reboot:"
 ui_print "  You may have selected the wrong path"
 ui_print "  Try reinstalling and select a different location"
 ui_print "*********************************************"
+
+# End
