@@ -1,12 +1,11 @@
 name: Build Custom Boot Animation Module
 
-# This workflow allows users to:
 # 1. Fork this repo
 # 2. Choose a device template OR add custom bootanimation.zip files to the 'upload' folder
 # 3. Run this workflow manually
 # 4. Download the ready-to-flash module
 
-run-name: "Build: ${{ inputs.source == 'template' && format('{0}/{1}', inputs.device, inputs.system) || 'upload' }} → ${{ inputs.target_location }}"
+run-name: "Build: ${{ inputs.source == 'template' && format('{0}/{1}', inputs.device, inputs.theme) || 'upload' }} > ${{ inputs.target_location }}"
 
 on:
   workflow_dispatch:
@@ -26,8 +25,8 @@ on:
         type: choice
         options:
           - 'liuqin'
-      system:
-        description: 'System type (only used when source is template)'
+      theme:
+        description: 'Theme (only used when source is template)'
         required: false
         default: 'HyperOS'
         type: choice
@@ -38,13 +37,12 @@ on:
       target_location:
         description: 'Where to place bootanimation files in the module'
         required: true
-        default: 'system/product/media'
+        default: '/product/media'
         type: choice
         options:
-          - 'system/product/media'
-          - 'system/media'
-          - 'system/system_ext/media'
-          - 'system/product/media/theme/default'
+          - '/product/media'
+          - '/system/media'
+          - '/system_ext/media'
 
 jobs:
   build-module:
@@ -122,17 +120,17 @@ jobs:
           echo "Source: $SOURCE"
 
           if [ "$SOURCE" = "template" ]; then
-            # Build template path from device and system inputs
+            # Build template path from device and theme inputs
             DEVICE="${{ github.event.inputs.device }}"
-            SYSTEM="${{ github.event.inputs.system }}"
+            THEME="${{ github.event.inputs.theme }}"
 
             # Use defaults if not specified
             DEVICE="${DEVICE:-liuqin}"
-            SYSTEM="${SYSTEM:-HyperOS}"
+            THEME="${THEME:-HyperOS}"
 
-            TEMPLATE_DIR="templates/$DEVICE/$SYSTEM"
+            TEMPLATE_DIR="templates/$DEVICE/$THEME"
 
-            echo "Using template: $DEVICE/$SYSTEM"
+            echo "Using template: $DEVICE/$THEME"
 
             if [ ! -d "$TEMPLATE_DIR" ]; then
               echo "Error: Template directory not found: $TEMPLATE_DIR"
@@ -237,8 +235,13 @@ jobs:
           # Determine target location (use input or default)
           TARGET_LOCATION="${{ github.event.inputs.target_location }}"
           if [ -z "$TARGET_LOCATION" ]; then
-            TARGET_LOCATION="system/product/media"
+            TARGET_LOCATION="/product/media"
           fi
+
+          MODULE_TARGET="system$TARGET_LOCATION"
+
+          echo "Target location: $TARGET_LOCATION"
+          echo "Module path: $MODULE_TARGET"
 
           # Remove all existing media directories to avoid conflicts
           # Only keep the one we're targeting
@@ -246,7 +249,7 @@ jobs:
 
           MEDIA_DIRS=(
             "build/module/system/product/media"
-            "build/module/system/media"
+            "build/module/system/system/media"
             "build/module/system/system_ext/media"
             "build/module/system/product/media/theme/default"
           )
@@ -254,7 +257,7 @@ jobs:
           for dir in "${MEDIA_DIRS[@]}"; do
             if [ -d "$dir" ]; then
               # Check if this is the target or a parent of the target
-              TARGET_DIR_FULL="build/module/$TARGET_LOCATION"
+              TARGET_DIR_FULL="build/module/$MODULE_TARGET"
               if [[ "$TARGET_DIR_FULL" != "$dir"* ]]; then
                 echo "  Removing: $dir"
                 rm -rf "$dir"
@@ -262,8 +265,8 @@ jobs:
             fi
           done
 
-          # Create target directory
-          TARGET_DIR="build/module/$TARGET_LOCATION"
+          # Create target directory with system/ prefix for Magisk
+          TARGET_DIR="build/module/$MODULE_TARGET"
           mkdir -p "$TARGET_DIR"
 
           # Clean any existing bootanimation files from the downloaded module
@@ -320,8 +323,12 @@ jobs:
           MODULE_VERSION="${{ steps.module_info.outputs.module_version }}"
 
           # Create a unique zip name with target location indicator
-          TARGET_SHORT=$(echo "${{ env.target_location }}" | sed 's/system\///g' | tr '/' '-')
+          # Remove leading slash and convert remaining slashes to dashes
+          TARGET_SHORT=$(echo "${{ env.target_location }}" | sed 's|^/||' | tr '/' '-')
           ZIP_NAME="${MODULE_ID}-${MODULE_VERSION}-${TARGET_SHORT}.zip"
+
+          # Artifact name without .zip (GitHub adds it automatically on download)
+          ARTIFACT_NAME="${MODULE_ID}-${MODULE_VERSION}-${TARGET_SHORT}"
 
           # Create ZIP with stored (no compression) mode for bootanimation compatibility
           echo "Creating ZIP with stored (no compression) mode..."
@@ -331,6 +338,7 @@ jobs:
           ZIP_SIZE=$(du -h "../$ZIP_NAME" | cut -f1)
 
           echo "zip_name=$ZIP_NAME" >> $GITHUB_OUTPUT
+          echo "artifact_name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
           echo "zip_size=$ZIP_SIZE" >> $GITHUB_OUTPUT
 
           echo ""
@@ -342,8 +350,8 @@ jobs:
       - name: Upload module artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.create_zip.outputs.zip_name }}
-          path: build/${{ steps.create_zip.outputs.zip_name }}
+          name: ${{ steps.create_zip.outputs.artifact_name }}
+          path: build/module
           retention-days: 90
           compression-level: 0
 
@@ -357,8 +365,8 @@ jobs:
           # Build source description
           if [ "$SOURCE" = "template" ]; then
             DEVICE="${{ github.event.inputs.device }}"
-            SYSTEM="${{ github.event.inputs.system }}"
-            SOURCE_DESC="template: $DEVICE/$SYSTEM"
+            THEME="${{ github.event.inputs.theme }}"
+            SOURCE_DESC="template: $DEVICE/$THEME"
           else
             SOURCE_DESC="upload"
           fi
@@ -397,16 +405,14 @@ jobs:
 
           1. Scroll down to the **Artifacts** section below
           2. Click on the module ZIP file to download
-          3. The download will be a ZIP containing the module
 
           ## Installation
 
-          1. Extract the downloaded artifact (if needed)
-          2. Flash the module ZIP using:
+          1. Flash the downloaded module ZIP using:
              - **Magisk Manager** → Modules → Install from storage
              - **KernelSU** → Module → Install
              - **APatch** → Module → Install
-          3. Reboot your device
+          2. Reboot your device
 
           ## Notes
 

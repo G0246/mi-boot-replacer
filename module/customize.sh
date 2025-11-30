@@ -66,10 +66,8 @@ detect_boot_dir() {
     module_boot_dir="/product/media"
   elif [ -f "$MODPATH/system/media/bootanimation.zip" ]; then
     module_boot_dir="/system/media"
-  elif [ -f "$MODPATH/system/system_ext/media/bootanimation.zip" ]; then
+  elif [ -f "$MODPATH/system_ext/media/bootanimation.zip" ]; then
     module_boot_dir="/system_ext/media"
-  elif [ -f "$MODPATH/system/product/media/theme/default/bootanimation.zip" ]; then
-    module_boot_dir="/product/media/theme/default"
   fi
 
   if [ -n "$module_boot_dir" ]; then
@@ -83,12 +81,8 @@ detect_boot_dir() {
       BOOT_DIR="/product/media"
     elif [ -f "/system/media/bootanimation.zip" ]; then
       BOOT_DIR="/system/media"
-    elif [ -f "/system/product/media/bootanimation.zip" ]; then
-      BOOT_DIR="/system/product/media"
     elif [ -f "/system_ext/media/bootanimation.zip" ]; then
       BOOT_DIR="/system_ext/media"
-    elif [ -f "/product/media/theme/default/bootanimation.zip" ]; then
-      BOOT_DIR="/product/media/theme/default"
     else
       BOOT_DIR="/product/media"
     fi
@@ -103,33 +97,37 @@ select_boot_dir() {
   ui_print "  Volume [-]: Confirm selection"
   ui_print "*********************************************"
 
-  # Available locations
-  local locations=("/product/media" "/system/media" "/system_ext/media" "/product/media/theme/default")
-  local descriptions=("Product Media (Default)" "System Media (Legacy)" "System Ext Media" "Theme Default")
+  # Available locations (3 options)
   local current_index=0
-  local total=${#locations[@]}
+  local total=3
 
   # Find if detected location matches any option
-  for i in "${!locations[@]}"; do
-    if [ "${locations[$i]}" = "$BOOT_DIR" ]; then
-      current_index=$i
-      break
-    fi
-  done
+  case "$BOOT_DIR" in
+    "/product/media") current_index=0 ;;
+    "/system/media") current_index=1 ;;
+    "/system_ext/media") current_index=2 ;;
+  esac
 
   while true; do
     ui_print ""
-    ui_print "  >> ${descriptions[$current_index]}"
-    ui_print "     Path: ${locations[$current_index]}"
+    case $current_index in
+      0) ui_print "  >> Product Media (Default)"; ui_print "     Path: /product/media" ;;
+      1) ui_print "  >> System Media (Legacy)"; ui_print "     Path: /system/media" ;;
+      2) ui_print "  >> System Ext Media"; ui_print "     Path: /system_ext/media" ;;
+    esac
 
     key_check
 
-    if [[ "$keycheck" == "KEY_VOLUMEUP" ]]; then
+    if [ "$keycheck" = "KEY_VOLUMEUP" ]; then
       # Next option
       current_index=$(( (current_index + 1) % total ))
     else
       # Confirm selection
-      BOOT_DIR="${locations[$current_index]}"
+      case $current_index in
+        0) BOOT_DIR="/product/media" ;;
+        1) BOOT_DIR="/system/media" ;;
+        2) BOOT_DIR="/system_ext/media" ;;
+      esac
       ui_print ""
       ui_print "- Selected: $BOOT_DIR"
       break

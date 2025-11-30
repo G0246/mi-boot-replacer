@@ -1,7 +1,7 @@
-id=mipad-custom-boot
-name=mipad-custom-boot
-version=v1.1.10
-versionCode=110
+id=mi-boot-replacer
+name=Xiaomi Boot Animation Replacer
+version=v1.1.2
+versionCode=112
 author=Veutexus
-description=A module that can custom boot animation for tablet devices. (GitHub: https://github.com/G0246/mipad-custom-boot)
-updateJson=https://raw.githubusercontent.com/G0246/mipad-custom-boot/main/update.json
+description=A module that can custom boot animation for Xiaomi devices. (GitHub: https://github.com/G0246)
+updateJson=https://raw.githubusercontent.com/G0246/mi-boot-replacer/main/update.json

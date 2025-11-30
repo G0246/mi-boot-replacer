@@ -1,6 +1,6 @@
 {
-  "version": "v1.1.0",
-  "versionCode": 110,
-  "zipUrl": "https://github.com/G0246/mipad-custom-boot/releases/latest/download/mipad-custom-boot-1.1.0.zip",
-  "changelog": "https://raw.githubusercontent.com/G0246/mipad-custom-boot/main/README.md"
+  "version": "v1.1.2",
+  "versionCode": 112,
+  "zipUrl": "https://github.com/G0246/mi-boot-replacer/releases/latest/download/mi-boot-replacer-1.1.2.zip",
+  "changelog": "https://raw.githubusercontent.com/G0246/mi-boot-replacer/main/README.md"
 }

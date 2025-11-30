@@ -1,12 +1,10 @@
 name: "NodeJs with Release"
 
 # This workflow is for maintainers/developers only
-# It packages the module, creates a GitHub release, and updates update.json
-#
-# Before running:
+
 # 1. Update module/module.prop with the new version
-# 2. Edit RELEASE_NOTES.md with your changelog
-# 3. Run this workflow
+# 2. Edit CHANGELOG.md
+# 3. Run
 
 run-name: "Release: v${{ inputs.version }} (${{ inputs.release_type }})"
 
@@ -59,7 +57,7 @@ jobs:
         id: create_zip
         run: |
           VERSION="${{ github.event.inputs.version }}"
-          ZIP_NAME="mipad-custom-boot-$VERSION.zip"
+          ZIP_NAME="mi-boot-replacer-$VERSION.zip"
 
           cd module
 
@@ -92,10 +90,10 @@ jobs:
           RELEASE_TYPE="${{ github.event.inputs.release_type }}"
           ZIP_NAME="${{ steps.create_zip.outputs.zip_name }}"
 
-          # Check if RELEASE_NOTES.md exists
-          if [ ! -f "RELEASE_NOTES.md" ]; then
-            echo "Error: RELEASE_NOTES.md not found!"
-            echo "Please create RELEASE_NOTES.md with your release notes before running this workflow."
+          # Check if CHANGELOG.md exists
+          if [ ! -f "CHANGELOG.md" ]; then
+            echo "Error: CHANGELOG.md not found!"
+            echo "Please create CHANGELOG.md with your release notes before running this workflow."
             exit 1
           fi
 
@@ -103,13 +101,13 @@ jobs:
           PREV_TAG=$(gh release list --repo ${{ github.repository }} --exclude-drafts --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null || echo "")
 
           # Copy release notes and append changelog link
-          cp RELEASE_NOTES.md release_notes.md
+          cp CHANGELOG.md changelog.md
 
           if [ -n "$PREV_TAG" ]; then
             CHANGELOG_URL="https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${TAG}"
-            echo "" >> release_notes.md
-            echo "---" >> release_notes.md
-            echo "**Full Changelog**: ${CHANGELOG_URL}" >> release_notes.md
+            echo "" >> changelog.md
+            echo "---" >> changelog.md
+            echo "**Full Changelog**: ${CHANGELOG_URL}" >> changelog.md
           fi
 
           # Build release flags
@@ -131,7 +129,7 @@ jobs:
           # Create the release with the ZIP attached
           gh release create "$TAG" "$ZIP_NAME" \
             --title "$TITLE" \
-            --notes-file release_notes.md \
+            --notes-file changelog.md \
             $FLAGS
 
           echo "Release created successfully!"
@@ -156,8 +154,8 @@ jobs:
           fi
 
           VERSION_NO_V="${{ github.event.inputs.version }}"
-          ZIP_URL="https://github.com/${{ github.repository }}/releases/latest/download/mipad-custom-boot-${VERSION_NO_V}.zip"
-          CHANGELOG_URL="https://raw.githubusercontent.com/${{ github.repository }}/main/README.md"
+          ZIP_URL="https://github.com/${{ github.repository }}/releases/latest/download/mi-boot-replacer-${VERSION_NO_V}.zip"
+          CHANGELOG_URL="https://raw.githubusercontent.com/${{ github.repository }}/main/CHANGELOG.md"
 
           echo "Updating update.json..."
           echo "  Version: $VERSION"

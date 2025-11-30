@@ -5,12 +5,15 @@ name: Auto Close Upload PRs
 
 on:
   pull_request_target:
+    types: [opened]
     paths:
       - 'upload/**'
 
 jobs:
   close-pr:
     runs-on: ubuntu-latest
+    # Only run for PRs from forks
+    if: ${{ github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name }}
     permissions:
       pull-requests: write
 
@@ -21,8 +24,11 @@ jobs:
           script: |
             const prNumber = context.payload.pull_request.number;
             const prAuthor = context.payload.pull_request.user.login;
+            const headRepo = context.payload.pull_request.head.repo.full_name;
+            const baseRepo = context.payload.pull_request.base.repo.full_name;
 
-            // Add comment explaining why
+            console.log(`Head repo: ${headRepo}, Base repo: ${baseRepo}`);
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -44,12 +50,10 @@ jobs:
             Thank you for your understanding!`
             });
 
-            // Close the PR
             await github.rest.pulls.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: prNumber,
               state: 'closed'
             });
-
-            console.log(`Closed PR #${prNumber} - modifies upload folder`);
+            console.log(`Closed PR #${prNumber}`);
